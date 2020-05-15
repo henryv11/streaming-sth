@@ -1,0 +1,51 @@
+<!DOCTYPE html PUBLIC>
+<html lang="en">
+  <head>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+    <title>Streaming app</title>
+    <link rel="stylesheet" type="text/css" href="./index.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.3/socket.io.js"></script>
+  </head>
+  <body>
+    <div class="header">
+      <small>(you)</small>
+      <h1>Hub</h1>
+    </div>
+
+    <div class="content">
+      <div class="control-button-container">
+        <button id="open-webcam">Open webcam</button>
+
+        <button id="share-screen">Share screen</button>
+
+        <input id="file-input" type="file" />
+
+        <button id="start-stream">Start Streaming</button>
+      </div>
+
+      <div class="player-container">
+        <video id="player" controls></video>
+      </div>
+
+      <div class="bottom-videos-container">
+        <div class="available-videos-container">
+          <div class="available-videos-header">Previous Streams</div>
+          <div class="available-videos-children" id="available-videos"></div>
+        </div>
+
+        <div class="current-broadcasts-container">
+          <div class="current-broadcasts-header">Current Streams</div>
+          <div
+            class="current-broadcasts-children"
+            id="available-broadcasters"
+          ></div>
+        </div>
+      </div>
+    </div>
+  </body>
+
+  <script src="./js/record.js"></script>
+  <script src="./js/broadcaster.js"></script>
+  <script src="./js/watcher.js"></script>
+  <script src="./js/main.js"></script>
+</html>

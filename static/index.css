@@ -1,0 +1,116 @@
+body,
+html {
+  padding: 0;
+  margin: 0;
+}
+
+.header {
+  height: 40px;
+  display: flex;
+  flex-direction: row;
+  align-content: center;
+  padding: 5px 20px;
+  background-color: rgba(150, 150, 150, 0.5);
+}
+
+.header h1 {
+  background-color: rgb(207, 19, 19);
+  border-radius: 8px;
+  border: 1px solid white;
+  box-shadow: 2px 2px 2px 1px rgba(100, 100, 100, 0.75);
+  padding: 0px 5px;
+  margin: 0;
+  user-select: none;
+}
+
+.header small {
+  margin-top: 3px;
+  font-weight: bold;
+  user-select: none;
+}
+
+.content {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.control-button-container {
+  margin: 5px 0;
+}
+
+.player-container {
+  width: 100%;
+  min-height: 400px;
+  max-height: 400px;
+  position: relative;
+  background: black;
+  box-shadow: 0px 8px 6px 2px rgba(0, 0, 0, 0.5);
+}
+
+#player {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  margin: auto;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.bottom-videos-container {
+  display: flex;
+  flex-direction: row;
+  margin-top: 20px;
+  width: 90%;
+}
+
+.current-broadcasts-container,
+.available-videos-container {
+  width: 50%;
+  padding: 2px 5px;
+}
+
+.current-broadcasts-header,
+.available-videos-header {
+  border-bottom: 1px solid black;
+  margin-bottom: 15px;
+  font-size: large;
+  font-weight: bold;
+  text-align: center;
+}
+
+.video-card {
+  border: 1px solid grey;
+  border-radius: 5px;
+  padding: 10px 5px;
+  box-shadow: 1px 1px 2px 0px black;
+  margin-bottom: 4px;
+  background: rgba(0, 0, 0, 0.1);
+  word-wrap: break-word;
+  overflow: hidden;
+  transition: color 10ms, transform 100ms;
+}
+
+.video-card.active {
+  background: rgba(50, 50, 50, 0.1);
+}
+
+.video-card:hover {
+  cursor: pointer;
+  transform: scale(1.005);
+  background-color: rgba(0, 0, 0, 0.2);
+}
+
+button,
+#file-upload-button {
+  border-radius: 5px;
+  border: 1px solid gray;
+}
+
+button:hover {
+  cursor: pointer;
+}
