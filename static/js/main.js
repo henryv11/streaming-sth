@@ -70,7 +70,7 @@ function renderBroadcasters() {
 async function webcam() {
   const stream = await getUserMedia();
   stopCurrentWatch();
-  player.setVideoSource(stream);
+  player.setVideoStream(stream);
   refreshBroadcastStream();
 }
 
