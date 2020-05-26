@@ -1,18 +1,23 @@
-function broadcast(socket, stream) {
+function broadcast(socket, _stream) {
   const config = {
     iceServers: [{ urls: ['stun:stun.l.google.com:19302'] }],
   };
   const peerConnections = {};
-  const recorder = record(stream, socket);
+  let stream = _stream;
 
   socket.emit('broadcast');
+  const recorder = record(stream, socket);
 
   socket.on('watch', (id) => {
     console.debug('got new watcher', id);
+
+    if (peerConnections[id]) {
+      console.debug('already watching');
+      return;
+    }
+
     const peer = new RTCPeerConnection(config);
     peerConnections[id] = peer;
-
-    peer.addTransceiver;
 
     stream.getTracks().forEach((track) => {
       console.debug('adding track to peer', peer);
@@ -20,8 +25,8 @@ function broadcast(socket, stream) {
     });
 
     peer.onicecandidate = (event) => {
-      console.debug('got icecandidate', id, event);
       if (event.candidate) {
+        console.debug('got icecandidate from peer', id, event);
         socket.emit('candidate', id, event.candidate);
       } else {
         console.warn('no candidate');
@@ -38,12 +43,13 @@ function broadcast(socket, stream) {
   });
 
   socket.on('answer', (id, desc) => {
-    console.debug('got answer', id, desc);
+    console.debug('got answer from server', id, desc);
     peerConnections[id].setRemoteDescription(desc);
   });
 
   socket.on('candidate', (id, candidate) => {
-    console.debug('got candidate', id, candidate);
+    console.debug('got candidate from server', id, candidate);
+    console.log(peerConnections[id].canTrickleIceCandidates);
     peerConnections[id].addIceCandidate(new RTCIceCandidate(candidate));
   });
 
@@ -68,14 +74,17 @@ function broadcast(socket, stream) {
       recorder.resume();
     },
     setStream(_stream) {
-      recorder.setStream(_stream);
+      console.debug('setting new stream to broadcast', stream);
       stream = _stream;
+      recorder.setStream(stream);
 
-      _stream.getTracks().forEach((track) => {
-        Object.values(peerConnections).forEach((peer) => {
-          console.debug('adding track to peer', peer);
-
-          peer.addTrack(track, _stream);
+      Object.values(peerConnections).forEach((peer) => {
+        console.log(peer, peer.getSenders());
+        peer.getSenders().forEach((sender) => {
+          stream.getTracks().forEach((t) => {
+            t.enabled = true;
+            sender.replaceTrack(t, stream);
+          });
         });
       });
     },

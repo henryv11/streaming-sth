@@ -42,14 +42,14 @@ function record(stream, socket) {
     },
 
     stop() {
-      if (recorder) {
+      if (recorder && recorder.state !== 'inactive') {
         recorder.stop();
       }
       socket.emit('endSaveStream');
     },
 
     setStream(stream) {
-      if (recorder && recorder.start !== 'inactive') {
+      if (recorder && recorder.state !== 'inactive') {
         recorder.stop();
       }
 

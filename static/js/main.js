@@ -1,4 +1,4 @@
-const player = document.getElementById('player');
+const player = playerController();
 const openWebcamButton = document.getElementById('open-webcam');
 const shareScreenButton = document.getElementById('share-screen');
 const streamingButton = document.getElementById('start-stream');
@@ -8,7 +8,6 @@ const availableBroadcastersChildren = document.getElementById(
   'available-broadcasters',
 );
 const socket = io.connect('/');
-
 let broadcasters = {};
 let currentBroadcast;
 let currentWatch;
@@ -29,45 +28,29 @@ socket.on('availableBroadcasters', (bc) => {
 });
 
 fileInput.onchange = (event) => {
-  const [file] = event.currentTarget.files;
-
-  if (!file) {
-    return alert('invalid file');
-  }
-
-  setVideoSource(URL.createObjectURL(file));
+  playLocalFile(event);
 };
 
-window.onunload = window.onbeforeunload = () => {
-  stopCurrentPlayback();
-  if (currentBroadcast) {
-    stopCurrentBroadcast();
-  }
-  if (currentWatch) {
-    stopCurrentWatch();
-  }
-  socket.emit('close');
-  socket.close();
+window.onunload = window.onbeforeunload = async () => {
+  onExit();
 };
 
 openWebcamButton.onclick = () => {
-  getUserMedia().then(setPlaybackStream);
+  webcam();
 };
 
 shareScreenButton.onclick = () => {
-  getDisplayMedia().then(setPlaybackStream);
+  shareScreen();
 };
 
-streamingButton.onclick = async () => {
+streamingButton.onclick = () => {
   if (currentBroadcast) {
-    await stopCurrentBroadcast();
-    streamingButton.innerHTML = 'Start Streaming';
+    stopCurrentBroadcast();
+    streamingButton.innerHTML = 'Start Screaming';
   } else {
-    try {
-      currentBroadcast = broadcast(socket, player.captureStream());
-      streamingButton.innerHTML = 'Stop Streaming';
-    } catch (error) {
-      alert(error.message);
+    startBroadcast();
+    if (currentBroadcast) {
+      streamingButton.innerHTML = 'Stop Screaming';
     }
   }
 };
@@ -84,22 +67,65 @@ function renderBroadcasters() {
     .join('');
 }
 
-async function watchStream(id) {
+async function webcam() {
+  const stream = await getUserMedia();
+  stopCurrentWatch();
+  player.setVideoSource(stream);
+  refreshBroadcastStream();
+}
+
+async function shareScreen() {
+  const stream = await getDisplayMedia();
+  stopCurrentWatch();
+  player.setVideoStream(stream);
+  refreshBroadcastStream();
+}
+
+function playLocalFile({
+  currentTarget: {
+    files: [file],
+  },
+}) {
+  if (!file) {
+    return alert('invalid file');
+  }
+
+  player.setVideoSource(URL.createObjectURL(file));
+  refreshBroadcastStream();
+}
+
+function onExit() {
+  if (currentBroadcast) {
+    stopCurrentBroadcast();
+  }
+  if (currentWatch) {
+    stopCurrentWatch();
+  }
+  socket.emit('close');
+  socket.close();
+}
+
+function startBroadcast() {
+  if (currentBroadcast) {
+    return;
+  }
+  currentBroadcast = broadcast(socket, player.getStream());
+}
+
+function watchStream(id) {
   if (id === currentStreamId) {
     return;
   }
 
+  stopCurrentWatch();
   currentStreamId = id;
-
-  if (currentWatch) {
-    await stopCurrentWatch();
-  }
 
   currentWatch = watch(
     id,
     socket,
-    (event) => {
-      setPlaybackStream(event.streams[0]);
+    ({ streams: [stream] }) => {
+      player.setVideoStream(stream);
+      refreshBroadcastStream();
     },
     () => console.info('stopped watcing'),
   );
@@ -107,76 +133,43 @@ async function watchStream(id) {
   renderBroadcasters();
 }
 
+function setVideoSourceFromServer(name) {
+  stopCurrentWatch();
+  player.setVideoSource(`http://localhost:8080/videos/${name}`);
+  refreshBroadcastStream();
+}
+
+function refreshBroadcastStream() {
+  if (!currentBroadcast) {
+    return;
+  }
+  currentBroadcast.setStream(player.getStream());
+}
+
+function stopCurrentWatch() {
+  if (!currentWatch) {
+    return;
+  }
+  currentStreamId = undefined;
+  console.debug('stopping current watch');
+  currentWatch.disconnect();
+  currentWatch = undefined;
+}
+
+function stopCurrentBroadcast() {
+  if (!currentBroadcast) {
+    return;
+  }
+  console.debug('stopping current broadcast');
+  currentBroadcast.stop();
+  currentWatch = undefined;
+}
+
 async function getUserMedia() {
   return await navigator.mediaDevices.getUserMedia({
     video: true,
     audio: true,
   });
-}
-
-async function setVideoSourceFromServer(name) {
-  return await setVideoSource(`http://localhost:8080/videos/${name}`);
-}
-
-async function setVideoSource(source) {
-  await stopCurrentPlayback();
-  player.src = source;
-  try {
-    await player.play();
-  } catch (error) {
-    console.error(error);
-  }
-  if (currentBroadcast) {
-    currentBroadcast.setStream(player.captureStream());
-  }
-}
-
-async function setPlaybackStream(stream) {
-  if (!stream) {
-    return;
-  }
-  await stopCurrentPlayback();
-  player.srcObject = stream;
-  try {
-    await player.play();
-  } catch (error) {
-    console.error(error);
-  }
-  if (currentBroadcast) {
-    currentBroadcast.setStream(player.captureStream());
-  }
-}
-
-async function stopCurrentWatch() {
-  if (!currentWatch) {
-    return;
-  }
-  currentWatch.stop();
-  currentWatch = undefined;
-}
-
-async function stopCurrentBroadcast() {
-  if (!currentBroadcast) {
-    return;
-  }
-  currentBroadcast.stop();
-  currentWatch = undefined;
-}
-
-async function stopCurrentPlayback() {
-  if (currentWatch) {
-    stopCurrentWatch();
-  }
-
-  try {
-    await player.pause();
-  } catch (error) {
-    console.error(error);
-  }
-
-  player.removeAttribute('src');
-  player.removeAttribute('srcObject');
-  await player.load();
 }
 
 async function getDisplayMedia() {
@@ -189,4 +182,38 @@ async function getDisplayMedia() {
       video: { mediaSource: 'screen' },
     });
   }
+}
+
+function playerController() {
+  const playerContainer = document.getElementById('player-container');
+  let player = createNewPlayer();
+
+  function createNewPlayer() {
+    playerContainer.innerHTML = `<video id="player" controls></video>`;
+    const playerEl = document.getElementById('player');
+    playerEl.onloadeddata = () => playerEl.play();
+    return playerEl;
+  }
+
+  createNewPlayer();
+
+  return {
+    async setVideoSource(source) {
+      console.debug('setting video source', source);
+      player = createNewPlayer();
+
+      player.src = source;
+    },
+
+    async setVideoStream(stream) {
+      console.debug('setting video stream', stream);
+      player = createNewPlayer();
+
+      player.srcObject = stream;
+    },
+
+    getStream() {
+      return player.captureStream();
+    },
+  };
 }

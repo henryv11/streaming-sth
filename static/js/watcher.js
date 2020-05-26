@@ -2,13 +2,19 @@ function watch(id, socket, onMediaStream, onDisconnect) {
   const config = {
     iceServers: [{ urls: ['stun:stun.l.google.com:19302'] }],
   };
+  let isOfferAccepted = false;
 
   let peerConnection;
 
   socket.emit('watch', id);
 
   socket.on('offer', (id, desc) => {
+    if (isOfferAccepted) {
+      return;
+    }
     console.debug('got offer', { id, desc });
+
+    isOfferAccepted = true;
     peerConnection = new RTCPeerConnection(config);
 
     peerConnection
@@ -38,8 +44,8 @@ function watch(id, socket, onMediaStream, onDisconnect) {
     };
 
     peerConnection.onicecandidate = (event) => {
-      console.debug('got icecandidate', event);
       if (event.candidate) {
+        console.debug('got icecandidate from peer', event);
         socket.emit('candidate', id, event.candidate);
       } else {
         console.warn('no candidate');
@@ -48,21 +54,23 @@ function watch(id, socket, onMediaStream, onDisconnect) {
   });
 
   socket.on('candidate', (id, candidate) => {
-    console.debug('got candidate', id, candidate);
+    console.debug('got candidate from server', id, candidate);
+    if (peerConnection.signalingState === 'closed') {
+      console.debug('signaling state is closed');
+      return;
+    }
     peerConnection
       .addIceCandidate(new RTCIceCandidate(candidate))
       .catch((e) => console.error(e));
   });
 
-  socket.on('disconnectPeer', () => {
-    console.debug('disconnecting from broadcaster');
-    peerConnection.close();
-    onDisconnect();
-  });
+  // socket.on('disconnectPeer', () => {});
 
   return {
-    stop() {
-      socket.emit('disconnect', id);
+    disconnect() {
+      socket.emit('disconnectPeer', id);
+      peerConnection.close();
+      onDisconnect && onDisconnect();
     },
   };
 }
